@@ -25,7 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 	// send a RESP simple string message "+OK\r\n" to the client whenever a client pings the server
-	msg := "+OK\r\n"
+	msg := "+PONG\r\n"
 	_, err = conn.Write([]byte(msg))
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())

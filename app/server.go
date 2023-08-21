@@ -12,21 +12,24 @@ func handleRequest(conn net.Conn) {
 	defer conn.Close()
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
-	// Read each message until newline.
-	reqLen, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("Error reading: ", err.Error())
-		return
-	}
 
-	// Print the incoming message.
-	fmt.Println("Received ", string(buf[:reqLen]))
+	for {
+		// Read each message until newline.
+		reqLen, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("Error reading: ", err.Error())
+			break
+		}
 
-	// For each message, send a pong message back to the client.
-	msg := "+PONG\r\n"
-	_, err = conn.Write([]byte(msg))
-	if err != nil {
-		fmt.Println("Error writing to connection: ", err.Error())
+		// Print the incoming message.
+		fmt.Println("Received ", string(buf[:reqLen]))
+
+		// For each message, send a pong message back to the client.
+		msg := "+PONG\r\n"
+		_, err = conn.Write([]byte(msg))
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+		}
 	}
 }
 

@@ -2,10 +2,46 @@ package main
 
 import (
 	"fmt"
-	// Uncomment this block to pass the first stage
 	"net"
 	"os"
+	"strings"
 )
+
+const (
+	// redis command type
+	redisCmdPing    = "PING"
+	redisCmdEcho    = "ECHO"
+	redisUnknownCmd = "UNKNOWN"
+)
+
+func parseRedisCommand(message []byte, messageLen int) (string, []string) {
+	// parseRedisCommand parses the message and returns the command and arguments.
+	// currently support PING and ECHO
+	// PING example: *1\r\n$4\r\nPING\r\n
+	// ECHO example: *2\r\n$4\r\nECHO\r\n$5\r\nHello\r\n
+
+	// convert to string
+	msg := string(message[:messageLen])
+
+	// split by \r\n
+	msgArr := strings.Split(msg, "\r\n")
+
+	// get command
+	cmd := strings.ToUpper(msgArr[2])
+
+	// get arguments
+	if cmd == redisCmdPing {
+		return cmd, nil
+	} else if cmd == redisCmdEcho {
+		// ignore all length tokens
+		args := msgArr[4:]
+		return cmd, args
+
+	} else {
+		return redisUnknownCmd, nil
+	}
+
+}
 
 // handleRequest handles requests from clients.
 func handleRequest(conn net.Conn) {
@@ -24,8 +60,21 @@ func handleRequest(conn net.Conn) {
 		// Print the incoming message.
 		fmt.Println("Received ", string(buf[:reqLen]))
 
+		// parse command
+		cmd, args := parseRedisCommand(buf, reqLen)
+		var msg string
+
+		if cmd == redisCmdPing {
+			msg = "+PONG\r\n"
+		} else if cmd == redisCmdEcho {
+			// join the echo message as a string
+			msg = strings.Join(args, " ") + "\r\n"
+			msg = "+" + msg
+		} else {
+			msg = "-ERR unknown command\r\n"
+		}
+
 		// For each message, send a pong message back to the client.
-		msg := "+PONG\r\n"
 		_, err = conn.Write([]byte(msg))
 		if err != nil {
 			fmt.Println("Error writing to connection: ", err.Error())

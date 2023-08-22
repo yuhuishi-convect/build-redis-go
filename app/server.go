@@ -68,7 +68,7 @@ func handleRequest(conn net.Conn) {
 			msg = "+PONG\r\n"
 		} else if cmd == redisCmdEcho {
 			// join the echo message as a string
-			msg = strings.Join(args, " ") + "\r\n"
+			msg = strings.Join(args, "") + "\r\n"
 			msg = "+" + msg
 		} else {
 			msg = "-ERR unknown command\r\n"

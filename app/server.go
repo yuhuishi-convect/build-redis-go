@@ -11,6 +11,8 @@ const (
 	// redis command type
 	redisCmdPing    = "PING"
 	redisCmdEcho    = "ECHO"
+	redisCmdSet     = "SET"
+	redisCmdGet     = "GET"
 	redisUnknownCmd = "UNKNOWN"
 )
 
@@ -36,10 +38,36 @@ func parseRedisCommand(message []byte, messageLen int) (string, []string) {
 		// ignore all length tokens
 		args := msgArr[4:]
 		return cmd, args
+	} else if cmd == redisCmdSet {
+		keyVal := msgArr[4]
+		valueVal := msgArr[6]
+		args := []string{keyVal, valueVal}
+		return cmd, args
+
+	} else if cmd == redisCmdGet {
+		keyVal := msgArr[4]
+		args := []string{keyVal}
+		return cmd, args
 
 	} else {
 		return redisUnknownCmd, nil
 	}
+
+}
+
+var db = make(map[interface{}]interface{})
+
+func handleSetCommand(key interface{}, value interface{}) {
+	// handleSetCommand handles SET command.
+	// save to db
+	db[key] = value
+}
+
+func handleGetCommand(key interface{}) (interface{}, bool) {
+	// handleGetCommand handles GET command.
+	// get from db
+	value, ok := db[key]
+	return value, ok
 
 }
 
@@ -70,6 +98,22 @@ func handleRequest(conn net.Conn) {
 			// join the echo message as a string
 			msg = strings.Join(args, "") + "\r\n"
 			msg = "+" + msg
+		} else if cmd == redisCmdSet {
+			keyVal := args[0]
+			valueVal := args[1]
+			handleSetCommand(keyVal, valueVal)
+			msg = "+OK\r\n"
+		} else if cmd == redisCmdGet {
+			keyVal := args[0]
+			value, ok := handleGetCommand(keyVal)
+			if ok {
+				// return as a simple string
+				msg = "+" + value.(string) + "\r\n"
+			} else {
+				// return a nil bulk string
+				msg = "$-1\r\n"
+			}
+
 		} else {
 			msg = "-ERR unknown command\r\n"
 		}

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -42,6 +44,15 @@ func parseRedisCommand(message []byte, messageLen int) (string, []string) {
 		keyVal := msgArr[4]
 		valueVal := msgArr[6]
 		args := []string{keyVal, valueVal}
+		// checks if PX is specified
+		numArgs := len(msgArr)
+		if numArgs > 8 {
+			// PX is specified
+			expireInMS := msgArr[10]
+			args = append(args, expireInMS)
+		} else {
+			args = append(args, "")
+		}
 		return cmd, args
 
 	} else if cmd == redisCmdGet {
@@ -55,19 +66,56 @@ func parseRedisCommand(message []byte, messageLen int) (string, []string) {
 
 }
 
-var db = make(map[interface{}]interface{})
+type RedisKey struct {
+	key       interface{}
+	expiredAt *int64 // unix timestamp
+}
 
-func handleSetCommand(key interface{}, value interface{}) {
+var db = make(map[interface{}]RedisKey)
+
+func handleSetCommand(key interface{}, value interface{}, expireInMS *int64) {
+
 	// handleSetCommand handles SET command.
+	redisVal := RedisKey{
+		key:       key,
+		expiredAt: nil,
+	}
+
+	// set expire time if expireInMS is not nil
+	if expireInMS != nil {
+		// get current unix timestamp
+		now := time.Now().Unix()
+		// set expiredAt
+		expiredAt := now + *expireInMS
+		redisVal.expiredAt = &expiredAt
+	}
+
+	fmt.Println("Set", key, value, *redisVal.expiredAt)
+
 	// save to db
-	db[key] = value
+	db[key] = redisVal
 }
 
 func handleGetCommand(key interface{}) (interface{}, bool) {
 	// handleGetCommand handles GET command.
 	// get from db
 	value, ok := db[key]
-	return value, ok
+	if !ok {
+		return nil, false
+	}
+
+	// check if expired
+	if value.expiredAt != nil {
+		// get current unix timestamp
+		now := time.Now().Unix()
+		if now > *value.expiredAt {
+			// expired
+			fmt.Println("Expired at", *value.expiredAt, "Now", now)
+			return nil, false
+		}
+	}
+
+	return value.key, true
 
 }
 
@@ -101,7 +149,21 @@ func handleRequest(conn net.Conn) {
 		} else if cmd == redisCmdSet {
 			keyVal := args[0]
 			valueVal := args[1]
-			handleSetCommand(keyVal, valueVal)
+			expireInMS := args[2]
+			// convert expireInMS to int if not empty
+			var expireInMSInt *int64
+			if expireInMS != "" {
+				expireInMSIntVal, err := strconv.ParseInt(expireInMS, 10, 64)
+				if err != nil {
+					fmt.Println("Error parsing expireInMS", err.Error())
+					os.Exit(1)
+				}
+				expireInMSInt = &expireInMSIntVal
+
+			} else {
+				expireInMSInt = nil
+			}
+			handleSetCommand(keyVal, valueVal, expireInMSInt)
 			msg = "+OK\r\n"
 		} else if cmd == redisCmdGet {
 			keyVal := args[0]

@@ -83,8 +83,8 @@ func handleSetCommand(key interface{}, value interface{}, expireInMS *int64) {
 
 	// set expire time if expireInMS is not nil
 	if expireInMS != nil {
-		// get current unix timestamp
-		now := time.Now().Unix()
+		// get current unix timestamp in milliseconds
+		now := time.Now().Unix() * 1000
 		// set expiredAt
 		expiredAt := now + *expireInMS
 		redisVal.expiredAt = &expiredAt
@@ -104,8 +104,8 @@ func handleGetCommand(key interface{}) (interface{}, bool) {
 
 	// check if expired
 	if value.expiredAt != nil {
-		// get current unix timestamp
-		now := time.Now().Unix()
+		// get current unix timestamp in milliseconds
+		now := time.Now().Unix() * 1000
 		if now > *value.expiredAt {
 			// expired
 			fmt.Println("Expired at", *value.expiredAt, "Now", now)

@@ -66,18 +66,18 @@ func parseRedisCommand(message []byte, messageLen int) (string, []string) {
 
 }
 
-type RedisKey struct {
-	key       interface{}
+type RedisVal struct {
+	value     interface{}
 	expiredAt *int64 // unix timestamp
 }
 
-var db = make(map[interface{}]RedisKey)
+var db = make(map[interface{}]RedisVal)
 
 func handleSetCommand(key interface{}, value interface{}, expireInMS *int64) {
 
 	// handleSetCommand handles SET command.
-	redisVal := RedisKey{
-		key:       key,
+	redisVal := RedisVal{
+		value:     value,
 		expiredAt: nil,
 	}
 
@@ -113,7 +113,7 @@ func handleGetCommand(key interface{}) (interface{}, bool) {
 		}
 	}
 
-	return value.key, true
+	return value.value, true
 
 }
 

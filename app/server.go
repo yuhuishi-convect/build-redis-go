@@ -106,9 +106,9 @@ func handleGetCommand(key interface{}) (interface{}, bool) {
 	if value.expiredAt != nil {
 		// get current unix timestamp in milliseconds
 		now := time.Now().Unix() * 1000
+		fmt.Println("Now: ", now, " expiredAt: ", *value.expiredAt)
 		if now > *value.expiredAt {
 			// expired
-			fmt.Println("Expired at", *value.expiredAt, "Now", now)
 			return nil, false
 		}
 	}

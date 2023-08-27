@@ -90,8 +90,6 @@ func handleSetCommand(key interface{}, value interface{}, expireInMS *int64) {
 		redisVal.expiredAt = &expiredAt
 	}
 
-	fmt.Println("Set", key, value, *redisVal.expiredAt)
-
 	// save to db
 	db[key] = redisVal
 }
